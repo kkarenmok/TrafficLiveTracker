@@ -9,4 +9,15 @@
     "name": "Mare Street / Victoria Park Road Stop Q",
     "routes": []
   }
+  ,
+  {
+    "id": "ELIZABETH_LINE_EXAMPLE",
+    "name": "Elizabeth line example station",
+    "routes": []
+  },
+  {
+    "id": "WEAVER_LINE_EXAMPLE",
+    "name": "Weaver line example station",
+    "routes": []
+  }
 ]

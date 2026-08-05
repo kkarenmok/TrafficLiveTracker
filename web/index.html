@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="description" content="Live London bus arrivals for your saved stops.">
+    <title>Bus arrivals</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Live London buses</p>
+          <h1>Your stops</h1>
+        </div>
+        <p id="updated-at" class="updated" aria-live="polite">Connecting…</p>
+      </header>
+
+      <section class="search-panel" aria-labelledby="search-title">
+        <div class="search-heading">
+          <div>
+            <h2 id="search-title">Add a bus stop</h2>
+            <p>Search by stop name, street or five-digit stop code.</p>
+          </div>
+        </div>
+        <form id="stop-form" class="search-form" novalidate>
+          <div class="combobox-wrap">
+            <label class="sr-only" for="stop-search">Bus stop location</label>
+            <div class="input-wrap">
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="m21 21-4.4-4.4m2.4-5.1a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z"/></svg>
+              <input
+                id="stop-search"
+                type="search"
+                placeholder="e.g. Mare Street or 73241"
+                autocomplete="off"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="search-results"
+                aria-expanded="false"
+              >
+              <select id="mode-select" aria-label="Search mode" title="Search mode">
+                <option value="bus">Bus</option>
+                <option value="elizabeth">Elizabeth line</option>
+                <option value="weaver">Weaver line</option>
+                <option value="rail">All rail</option>
+              </select>
+              <span id="search-spinner" class="spinner is-hidden" aria-hidden="true"></span>
+            </div>
+            <div id="search-results" class="results is-hidden" role="listbox"></div>
+          </div>
+          <button id="add-stop" class="primary-button" type="submit" disabled>Add stop</button>
+        </form>
+        <p id="search-status" class="form-status" role="status"></p>
+      </section>
+
+      <section aria-labelledby="arrivals-title">
+        <div class="section-heading">
+          <h2 id="arrivals-title">Next arrivals</h2>
+          <button id="refresh" class="text-button" type="button">Refresh</button>
+        </div>
+        <div id="dashboard-status" class="dashboard-status" role="status">Loading live arrivals…</div>
+        <div id="stop-grid" class="stop-grid" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast is-hidden" role="status">
+      <span id="toast-message"></span>
+      <button id="undo-remove" type="button">Undo</button>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
