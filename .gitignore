@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
-*.egg-info/
-.pytest_cache/
-.venv/
 .env
+.venv/
+.pytest_cache/
+traffic_live_tracker.db
+*.egg-info/

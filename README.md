@@ -1,21 +1,27 @@
 # TrafficLiveTracker
 
-FastAPI service for showing live London bus arrivals on a Raspberry Pi or any
-local display client.
+A minimal live London bus dashboard. The browser interface is hosted on GitHub
+Pages, while a small FastAPI service on Render proxies Transport for London
+(TfL) data and stores a shared list of bus stops in PostgreSQL.
 
-The app uses the Transport for London Unified API and normalizes live bus
-arrival predictions into a compact local API.
+Stops R and Q at Mare Street / Victoria Park Road are created when the database
+is first provisioned. Any visitor can search for individual bus stops, add them,
+remove them, and undo a removal. Changes are shared by every visitor.
 
-## Features
+## Architecture
 
-- `GET /health` service health check.
-- `GET /stops` configured London bus stops.
-- `GET /arrivals/{stop_id}` live arrivals for one stop.
-- `GET /dashboard` display-ready arrivals for all configured stops.
-- Optional route filtering per stop.
-- TfL API failures are returned as clear HTTP errors.
+- `web/` contains the dependency-free GitHub Pages application.
+- `src/traffic_live_tracker/` contains the FastAPI service and TfL client.
+- `migrations/` contains the PostgreSQL/SQLite schema and initial stop seed.
+- `render.yaml` provisions the Render API and PostgreSQL database.
+- `.github/workflows/pages.yml` tests the project and deploys GitHub Pages.
 
-## Setup
+The Pages bundle contains only the public API URL. TfL and database credentials
+remain in Render environment variables.
+
+## Local development
+
+Create an environment and install the project:
 
 ```bash
 python -m venv .venv
@@ -23,70 +29,81 @@ source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 
-TfL recommends registering for an API key. The app can run without a key for
-some public requests, but production use should set one:
+Initialize the local SQLite database and run the API:
+
+```bash
+alembic upgrade head
+uvicorn traffic_live_tracker.main:app --reload --port 8000
+```
+
+Serve the static site from another terminal:
+
+```bash
+python -m http.server 8080 --directory web
+```
+
+Open `http://localhost:8080`. The committed local `web/config.js` targets the
+API at `http://localhost:8000`.
+
+Optional API settings:
 
 ```bash
 export TFL_APP_KEY="your-tfl-api-key"
-```
-
-Optional configuration:
-
-```bash
-export STOPS_CONFIG_PATH="config/stops.json"
+export DATABASE_URL="sqlite:///traffic_live_tracker.db"
+export CORS_ORIGINS="http://localhost:8080,https://kkarenmok.github.io"
 export REFRESH_SECONDS="30"
 export TFL_TIMEOUT_SECONDS="10"
 ```
 
-Edit `config/stops.json` with your bus stop IDs, display names, and optional
-route filters.
+## Deploy the API to Render
 
-## Run Locally
+1. In Render, create a new Blueprint from this GitHub repository. Render reads
+   `render.yaml` and creates `traffic-live-tracker-api` plus its PostgreSQL
+   database.
+2. Enter `TFL_APP_KEY` when prompted. TfL permits some calls without a key, but
+   a registered key is recommended for a deployed service.
+3. Wait for the service to become healthy at `/health`. The start command runs
+   `alembic upgrade head` before Uvicorn, so the first deploy creates and seeds
+   the database.
+4. Copy the service's HTTPS URL, such as
+   `https://traffic-live-tracker-api.onrender.com`.
 
-```bash
-uvicorn traffic_live_tracker.main:app --host 0.0.0.0 --port 8000
-```
+The Blueprint starts on Render's free tiers. A free web service spins down while
+idle, so the first request after inactivity can take about a minute. A free
+Render Postgres database expires after 30 days and has no backups; upgrade the
+database to `basic-256mb` or another paid tier before relying on it for lasting
+shared configuration.
 
-Then open:
+## Deploy the frontend to GitHub Pages
 
-- `http://localhost:8000/health`
-- `http://localhost:8000/stops`
-- `http://localhost:8000/dashboard`
-- `http://localhost:8000/docs`
+1. In the GitHub repository, open **Settings → Secrets and variables → Actions →
+   Variables** and create `API_BASE_URL` with the Render HTTPS URL (without a
+   trailing slash).
+2. Open **Settings → Pages** and choose **GitHub Actions** as the source.
+3. Run the **Test and deploy Pages** workflow, or push to `main`.
+4. Open `https://kkarenmok.github.io/TrafficLiveTracker/`.
 
-## Raspberry Pi Boot Service
+The workflow refuses to deploy when `API_BASE_URL` is missing and generates the
+production `config.js` only inside the Pages artifact.
 
-Create `/etc/systemd/system/traffic-live-tracker.service`:
+## API
 
-```ini
-[Unit]
-Description=TrafficLiveTracker API
-After=network-online.target
-Wants=network-online.target
+- `GET /health` — service health.
+- `GET /stops` — shared configured stops.
+- `GET /stops/search?q=mare%20street` — TfL-ranked individual bus stops.
+- `POST /stops` with `{ "id": "490003314R" }` — validate and add a stop.
+- `DELETE /stops/{stop_id}` — remove and return a stop.
+- `GET /arrivals/{stop_id}` — arrivals for a configured stop.
+- `GET /dashboard` — refresh interval and arrivals for all configured stops.
+- `GET /docs` — interactive OpenAPI documentation.
 
-[Service]
-WorkingDirectory=/home/pi/TrafficLiveTracker
-Environment=TFL_APP_KEY=your-tfl-api-key
-Environment=STOPS_CONFIG_PATH=config/stops.json
-ExecStart=/home/pi/TrafficLiveTracker/.venv/bin/uvicorn traffic_live_tracker.main:app --host 0.0.0.0 --port 8000
-Restart=always
-RestartSec=5
-User=pi
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable it:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable traffic-live-tracker
-sudo systemctl start traffic-live-tracker
-```
+Stop editing is intentionally public. Mutation endpoints are transaction-safe,
+reject duplicates, and apply a basic per-client rate limit, but authentication
+should be added before using the shared list for a sensitive installation.
 
 ## Tests
 
 ```bash
-pytest
+pytest -q
+node --check web/app.js
 ```

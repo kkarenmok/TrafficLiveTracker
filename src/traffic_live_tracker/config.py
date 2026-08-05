@@ -17,6 +17,12 @@ class BusStop:
 class Settings:
     tfl_app_key: str | None
     stops_config_path: Path
+    database_url: str = "sqlite:///traffic_live_tracker.db"
+    cors_origins: tuple[str, ...] = (
+        "https://kkarenmok.github.io",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+    )
     refresh_seconds: int = 30
     tfl_timeout_seconds: float = 10.0
 
@@ -25,6 +31,17 @@ def load_settings() -> Settings:
     return Settings(
         tfl_app_key=os.getenv("TFL_APP_KEY") or None,
         stops_config_path=Path(os.getenv("STOPS_CONFIG_PATH", "config/stops.json")),
+        database_url=_database_url(
+            os.getenv("DATABASE_URL", "sqlite:///traffic_live_tracker.db")
+        ),
+        cors_origins=tuple(
+            origin.strip()
+            for origin in os.getenv(
+                "CORS_ORIGINS",
+                "https://kkarenmok.github.io,http://localhost:8080,http://127.0.0.1:8080",
+            ).split(",")
+            if origin.strip()
+        ),
         refresh_seconds=_read_int("REFRESH_SECONDS", default=30, minimum=5),
         tfl_timeout_seconds=float(os.getenv("TFL_TIMEOUT_SECONDS", "10")),
     )
@@ -70,4 +87,13 @@ def _read_int(name: str, default: int, minimum: int) -> int:
     value = int(raw)
     if value < minimum:
         raise ValueError(f"{name} must be at least {minimum}")
+    return value
+
+
+def _database_url(value: str) -> str:
+    # Render exposes a generic PostgreSQL URL; select the installed psycopg 3 driver.
+    if value.startswith("postgresql://"):
+        return value.replace("postgresql://", "postgresql+psycopg://", 1)
+    if value.startswith("postgres://"):
+        return value.replace("postgres://", "postgresql+psycopg://", 1)
     return value

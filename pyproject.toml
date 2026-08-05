@@ -5,12 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "traffic-live-tracker"
 version = "0.1.0"
-description = "FastAPI service for live London bus arrivals on a Raspberry Pi"
+description = "GitHub Pages dashboard and FastAPI service for live London bus arrivals"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+  "alembic>=1.13,<2",
   "fastapi>=0.111,<1",
   "httpx>=0.27,<1",
+  "psycopg[binary]>=3.2,<4",
+  "sqlalchemy>=2.0,<3",
   "uvicorn[standard]>=0.30,<1",
 ]
 
